@@ -155,8 +155,6 @@ if __name__ == '__main__':
     response = requests.get(url, params)
     gameList = response.json()['dates']
 
-    gamedf.to_csv('./gameMetaData/gamesOverview.csv',index=False)
-
     # Loop through games
     for idx,game in enumerate(gameList):
         gameEndpoint = game['games'][0]['link']
@@ -178,3 +176,5 @@ if __name__ == '__main__':
                 'Outcome': outcome, 'goalsFor': goalsTotFor, 'goalsAgainst': goalsTotAgainst,
                 'starsPlayers': playersFor, 'opposingPlayers': playersAgainst, 
                 'defendingDict':defendingDictList})
+
+    gamedf.to_csv('./gameMetaData/gamesOverview.csv',index=False)

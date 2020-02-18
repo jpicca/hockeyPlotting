@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Dallas Stars Shot Distribution</title>
+  <meta name="description" content="Shot Distribution">
+  <meta name="author" content="Joey Picca">
+
+  <!--<link rel="stylesheet" href="css/styles.css?v=1.0">-->
+
+</head>
+
+<style>
+
+	@font-face {
+		font-family: "tondo";
+		src: url("./assets/tondo.otf");
+	}
+
+	body {
+
+		font-family: tondo, sans-serif;
+
+	}
+
+	.img-overlay-wrap {
+	  position: relative;
+	  display: inline-block; /* <= shrinks container to image size */
+	  transition: transform 150ms ease-in-out;
+	}
+
+	.img-overlay-wrap img { /* <= optional, for responsiveness */
+	   display: block;
+	   width: 1218px;
+	   height: 517.65px;
+	}
+
+	.img-overlay-wrap svg {
+	  position: absolute;
+	  top: 0;
+	  left: 0;
+	}
+
+	.buttonz {
+		position: fixed;
+		z-index: 10;
+		background-color: white;
+
+	}
+
+	.buttonz p {
+		text-align: center;
+	}
+
+	.tooltip {
+		position: fixed;
+		pointer-events: none;
+		background-color: white;
+		z-index: 11;
+	}
+
+</style>
+
+<body>
+
+	<div class='buttonz'>
+		<form id='gameType' onchange='update()'>
+			<input type="radio" id="all" name="type" value="all" checked>
+			<label for="all">All</label><br>
+			<input type="radio" id="win" name="type" value="win">
+			<label for="win">Wins</label><br>
+			<input type="radio" id="loss" name="type" value="loss">
+			<label for="loss">Losses</label><br>
+			<input type="radio" id="diff" name="type" value="diff">
+			<label for="diff">Win v Loss Difference</label>
+		</form>
+		<p>-----</p>
+		<form id='filterform' onchange='update()'>
+			<input type='checkbox' id='filter' name='filter' value='filter'>
+			<label for='filter'> Smooth </label>
+		</form>
+		<form id='pergameform' onchange='update()'>
+			<input type='checkbox' id='pergame' name='pergame' value='pergame'>
+			<label for='pergame'> Per Game </label>
+		</form>
+
+	</div>
+
+	<div class='tooltip'></div>
+
+	<script src="//d3js.org/d3.v5.min.js"></script>
+
+	<div class="img-overlay-wrap">
+
+		<img src="../rink_new.png">
+		<svg xmlns="http://www.w3.org/2000/svg"> </svg>
+
+	</div>
+
+	<script>
+
+    //d3.select("body").append("svg")
+
+    	var svgwidth = d3.select('img').node().getBoundingClientRect().width;
+    	var svgheight = (svgwidth*85/200); // Divide width by 200 to get the size relative to a rink, then multiply by height 85
+
+        var svg = d3.select("svg")
+          .attr("width",svgwidth)
+          .attr("height",svgheight),
+            margin = {
+              top: 20,
+              right: 50,
+              bottom: 20,
+              left: 50
+            }
+
+        var xpos = 0; //starting xpos and ypos at 1 so the stroke will show when we make the grid below
+		var ypos = 0;
+		var dxdy = 2.5;
+		var fracDim = dxdy/200;
+		var boxPageDim = fracDim*svgwidth;
+              //width = +svg.attr("width") - margin.left - margin.right,
+              //height = +svg.attr("height") - margin.top - margin.bottom,
+        
+        var colormap;
+        var scale;
+
+        var tooltip = d3.select(".tooltip")
+						.style("opacity", 0);
+
+        // Just to investigate data in the console
+        var testdata;
+
+        // dictionary to direct the file download
+        var gameTypeDict = {
+        		'all':'allGames',
+        		'win':'allWins',
+        		'loss':'allLosses',
+        		'diff':'diff'
+        	};
+
+        function makeDemColors(gameType,filter,pg) {
+
+        	filename = '../shotCSVs/' + gameType + '/' + gameTypeDict[gameType];
+
+        	// Check if per game is checked. If so, append PG to filename
+        	if (pg) {
+        		filename = filename + 'PG';
+        	};
+
+        	// Check if filter is checked. If so, append _F to filename
+        	if (filter) {
+        		filename = filename + '_F.csv';
+        	} else {
+        		filename = filename + '.csv';
+        	}
+	        
+	    
+        	if (gameType == 'diff') {
+	        	colormap = d3.interpolateRdBu;
+	        	scale = d3.scaleSequential(colormap);
+	        } else {
+	        	// Uses colormap from colorbrewer (should be similar to seaborn cmaps)
+		        colormap = d3.interpolateReds;
+		        scale = d3.scaleSequential(colormap);
+	        }
+
+        	d3.csv(filename).then(function (data) {
+	        //d3.csv('../shotCSVs/all/allGamesPG.csv').then(function (data) {
+				testdata=data;
+
+				toRead = data['columns']
+
+				// The current way the csvs are formatted, we need to drop the last element of the list
+				toRead.pop()
+
+				// Convert all "string" numbers to actual numbers
+				toRead = toRead.map(x=>+x)
+
+				// If it's a difference, we need to make some chanegs to the color scale
+				if (gameType == 'diff') {
+
+					// Check which end of the domain is a larger number, set the opposite end to that magnitude
+					// Also flip the domain so we have reds (warmer) indicating wins
+
+					if (Math.abs(d3.min(toRead)) > d3.max(toRead)) {
+						scale.domain([Math.abs(d3.min(toRead),d3.min(toRead))])
+					} else {
+						scale.domain([d3.max(toRead),-d3.max(toRead)])
+					}
+
+				} else {
+					scale.domain([d3.min(toRead),d3.max(toRead)])
+				}
+
+
+				var rects = svg.selectAll("rect.play-points")
+					.data(toRead)
+					.join('rect')
+					.attr("x", (d, i) => (i%(200/dxdy))*boxPageDim)
+					.attr("y", (d, i) => (Math.floor(i/(200/dxdy)))*boxPageDim)
+					.attr('width',boxPageDim)
+				    .attr('height',boxPageDim);
+				 	//.attfill', "rgb(50, 140, 20)")
+
+				rects.transition()
+				 	.duration(500)
+				 	.attr('fill', d => scale(Number(d)))
+					.attr("opacity",0.5)
+					.attr('class','play-points')
+					
+				rects.on("mouseover", 
+						function(d,i) {
+							tooltip.transition()
+							   .duration(200)
+							   .style("opacity", .9);
+							tooltip.html(function() {
+								
+
+								let x = i%80
+								let y = Math.floor(i/80)
+								yFromGoal = Math.abs((y+0.5)*dxdy-42.5)
+								xFromGoal = Math.abs((x+0.5)*dxdy-189)
+
+								distanceFromGoal = Math.sqrt(Math.pow(xFromGoal,2)+Math.pow(yFromGoal,2))
+								angleFromGoal = Math.asin(yFromGoal/distanceFromGoal)*180/Math.PI
+
+								if (['all','loss','win'].includes(gameType)) {
+									return d + ' Shots<br>' + 'Distance: ' + Math.round(distanceFromGoal) + ' ft <br> \
+												Angle: ' + Math.round(angleFromGoal) + ' deg'
+								} else {
+									if (d >= 0) {
+										return '+' + d + ' Shots <br>' + 'Distance: ' + Math.round(distanceFromGoal) + ' ft <br> \
+												Angle: ' + Math.round(angleFromGoal) + ' deg'
+									}
+									else {
+										return d + ' Shots <br>' + 'Distance: ' + Math.round(distanceFromGoal) + ' ft <br> \
+												Angle: ' + Math.round(angleFromGoal) + ' deg'
+									}
+								}
+
+								//return Math.round(angleFromGoal*180/Math.PI)
+
+							})
+							.style("left", (d3.event.pageX + 10) + "px")
+               				.style("top", (d3.event.pageY - 28) + "px");
+
+               				d3.select(this)
+				                .attr("stroke-width", 2)
+				                .attr("stroke",'black')
+				                .attr("opacity",1)
+						})
+						.on("mouseout", 
+							function() {
+	          					tooltip.transition()
+	               					.duration(500)
+	               					.style("opacity", 0);
+
+	               				d3.select(this)
+				                	.attr("stroke-width", 0)
+				                	.attr("opacity",0.5)
+	               			});
+
+				makeColorBar(gameType,filter,pg);
+
+			});
+
+		};
+
+		function makeColorBar(gameType,filter,pg) {
+
+			let list = [];
+			let txt_list = [];
+
+			max = scale.domain()[1]
+			min = scale.domain()[0]
+
+			let diff = max - min
+			numSteps = 10
+			let inc = diff/numSteps;
+
+			for (var i = 0; i < numSteps; i++) {
+
+				list.push(Math.round((i*inc + scale.domain()[0])*100)/100)
+			}
+
+			if (gameType == 'diff') {
+
+				txt_list.push('Wins')
+				txt_list.push('Losses')
+
+			}
+
+			svg.selectAll("rect.cbar")
+				.data(list)
+				.join('rect')
+				.attr('x', (d,i) => i*boxPageDim*2+(svgwidth/2 - (list.length/2)*boxPageDim*2))
+				.attr('y', boxPageDim*3)
+				.attr('width',boxPageDim*2)
+				.attr('height',boxPageDim*2)
+				.transition()
+				.duration(500)
+				.attr('fill', d => scale(d))
+				.attr('class','cbar')
+
+			svg.selectAll('text.cbar.scale')
+				.data(list)
+				.join('text')
+				.attr('x', (d,i) => i*boxPageDim*2+(svgwidth/2 - (list.length/2)*boxPageDim*2))
+				.attr('y', boxPageDim*6)
+				//Math.abs to stylize for the difference legend
+				.text(d => Math.abs(d))
+				.attr('class','cbar scale')
+				.attr('font-size',10);
+
+			svg.selectAll('text.cbar.diff')
+				.data(txt_list)
+				.join('text')
+				.attr('x', (d,i) => i*boxPageDim*10+((svgwidth/2 - (list.length/4)*boxPageDim*2)))
+				.attr('y', boxPageDim * 3)
+				.text(d => d)
+				.attr('text-anchor','middle')
+				.attr('class','cbar diff')
+				.attr('font-size',12);
+
+		}
+
+		makeDemColors('all',false,false);
+
+		function update() {
+
+			let changedTo = document.querySelector("input[name=type]:checked").value
+			let filtered = document.querySelector("input[name=filter]").checked
+			let pergame = document.querySelector("input[name=pergame]").checked
+
+			makeDemColors(changedTo,filtered,pergame);
+
+		}
+
+	</script>
+
+</body>

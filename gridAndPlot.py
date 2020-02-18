@@ -22,8 +22,8 @@ filename=f'./images/{player}ShotDiff.png'
 def createGrid(dx=10,dy=10):
 
     # Create arrays for gridding
-    x_axis = np.arange(-100,100+dx,dx)
-    y_axis = np.arange(-42.5,42.5+dy,dy)
+    x_axis = np.arange(-100,100,dx)
+    y_axis = np.arange(-42.5,42.5,dy)
 
     # Create our meshgrid from our arrays
     X, Y = np.meshgrid(x_axis, y_axis)
