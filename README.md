@@ -17,6 +17,8 @@ There are four primary back-end Python scripts:
 ### Front End
 Version 5 of d3js is utilized to visualize our gridded shot data. A menu on the left can be used to display data by game type, as well as filtered/smoothed and per-game data.
 
+![Example](https://github.com/jpicca/hockeyPlotting/blob/master/Screenshot%202020-02-19%2017.13.29.png)
+
 ### Future Work
 The next steps are to develop a logistic regression model that utilizes features associated with shot data to predict goal probability for each shot. These data could then be plotted and utilized to determine is a goalie is performing as expected, above, or below NHL average.
 
