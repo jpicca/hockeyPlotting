@@ -27,10 +27,11 @@ params = {
 response = requests.get(url, params)
 gameList = response.json()['dates']
 
+numFiles = len(glob(f'{path}*'))
+
 # Loop through games
 for idx,game in enumerate(gameList):
     path = './gameplayData/'
-    numFiles = len(glob(f'{path}*'))
 
     gameEndpoint = game['games'][0]['link']
     game_url = "https://statsapi.web.nhl.com" + gameEndpoint
